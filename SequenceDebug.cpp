@@ -14,7 +14,7 @@ using namespace std;
 // Test counter
 int testsPassed = 0;
 int totalTests = 0;
-
+//add
 #define RUN_TEST(test_func) \
     do { \
         totalTests++; \

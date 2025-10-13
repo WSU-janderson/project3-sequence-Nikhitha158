@@ -14,6 +14,7 @@ SequenceNode* Sequence::getNode(size_t position) const {
     }
     return current;
 }
+//ok
 
 // ============================================================================
 // Constructors / Destructor / Assignment

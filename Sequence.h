@@ -6,7 +6,7 @@
 #include <string>      // For using text strings like "hello world"
 #include <stdexcept>   // For error handling and throwing exceptions
 
-
+//add
 // SequenceNode - A single item in our linked list
 class SequenceNode {
 public:
