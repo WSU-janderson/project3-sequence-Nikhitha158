@@ -2,118 +2,56 @@
 #define SEQUENCE_H
 
 #include <iostream>
-#include <memory>      // For managing the memory
-#include <string>      // For using text strings like "hello world"
-#include <stdexcept>   // For error handling and throwing exceptions
+#include <memory>                   // Provides smart pointers
+#include <string>                   // Provides std::string class
+#include <stdexcept>                // Provides exception classes (runtime_error, out_of_range)
+// SequenceNode - Node of a doubly-linked list using shared/weak pointers
 
-//add
-// SequenceNode - A single item in our linked list
 class SequenceNode {
 public:
-    // The actual data stored in this node
-    std::string item;
+    std::string item;                               // Data value stored in this node
+    std::shared_ptr<SequenceNode> next;             // Shared pointer to next node
+    std::weak_ptr<SequenceNode> prev;               // Weak pointer to previous node
 
-     /* Pointer to the next node in the list
-       Uses unique_ptr so it automatically deletes the next node when this node is deleted */
-    std::unique_ptr<SequenceNode> next;
-
-     /* Pointer to the previous node in the list
-    Uses raw pointer because previous node already owns this one */
-    SequenceNode* prev;
-
-    // Default constructor - creates an empty node
-    SequenceNode() : item(""), next(nullptr), prev(nullptr) {}
-
-    // Constructor with value - creates a node with specific data
-    SequenceNode(const std::string& value) : item(value), next(nullptr), prev(nullptr) {}
-
-    /* Disable copying to prevent accidentally creating duplicate nodes
-    This helps avoid memory management issues */
-    SequenceNode(const SequenceNode&) = delete;
-    SequenceNode& operator=(const SequenceNode&) = delete;
+    SequenceNode() : item(""), next(nullptr), prev() {}                  // Default constructor initializes empty node
+    SequenceNode(const std::string& value) : item(value), next(nullptr), prev() {} // Constructor initializes with value
 };
+// Sequence - Doubly linked list supporting random access and dynamic operations
 
-// ============================================================================
-// Sequence - A doubly linked list
-// ============================================================================
 class Sequence {
 private:
-    // Pointer to the first node in the list
-    std::unique_ptr<SequenceNode> head;
+    std::shared_ptr<SequenceNode> head;             // Pointer to first node
+    std::weak_ptr<SequenceNode> tail;               // Pointer to last node
+    size_t numElts;                                 // Tracks number of elements in list
 
-    // Pointer to the last node in the list
-    SequenceNode* tail;
-
-    // Count of how many items are currently in the list
-    size_t numElts;
-
-    // Helper function to find a node at a specific position
-    SequenceNode* getNode(size_t position) const;
+    std::shared_ptr<SequenceNode> getNode(size_t position) const; // Returns pointer to node at index
 
 public:
-    // CONSTRUCTORS AND DESTRUCTOR
+    // Constructors / Destructor
+    Sequence(size_t sz = 0);                        // Creates list with given number of empty nodes
+    Sequence(const Sequence& s);                    // Copy constructor creates deep copy of another Sequence
+    ~Sequence();                                    // Destructor releases all resources
+    Sequence& operator=(const Sequence& s);         // Assignment operator performs deep copy
 
-    // Create a new Sequence - can be empty or with a specific number of empty slots
-    Sequence(size_t sz = 0);
+    // Element access
+    std::string& operator[](size_t position);       // Provides read/write access to element at index
 
-    // Copy constructor - makes a complete duplicate of another Sequence
-    Sequence(const Sequence& s);
+    // Modifiers
+    void push_back(std::string item);               // Adds new element to end of list
+    void pop_back();                                // Removes last element from list
+    void insert(size_t position, std::string item); // Inserts element at given index
+    void clear();                                   // Removes all elements from list
+    void erase(size_t position);                    // Removes single element at index
+    void erase(size_t position, size_t count);      // Removes multiple elements starting at index
 
-    // Destructor - automatically cleans up all memory when Sequence is destroyed
-    ~Sequence();
+    // Accessors
+    std::string front() const;                      // Returns first element (throws if empty)
+    std::string back() const;                       // Returns last element (throws if empty)
+    bool empty() const;                             // Checks if list contains no elements
+    size_t size() const;                            // Returns current number of elements
 
-    // Assignment operator - makes this Sequence a copy of another one
-    Sequence& operator=(const Sequence& s);
-
-
-    // ELEMENT ACCESS
-
-    // Get or change an element at a specific position, like array[index]
-    std::string& operator[](size_t position);
-
-    // MODIFIERS - Functions that change the Sequence
-
-
-    // Add a new item to the end of the Sequence
-    void push_back(std::string item);
-
-    // Remove the last item from the Sequence
-    void pop_back();
-
-    // Insert a new item at a specific position
-    void insert(size_t position, std::string item);
-
-    // Remove all items from the Sequence
-    void clear();
-
-    // Remove one item at a specific position
-    void erase(size_t position);
-
-    // Remove multiple items starting from a specific position
-    void erase(size_t position, size_t count);
-
-
-    // ACCESSORS - Functions that look at but don't change the Sequence
-
-
-    // Get the first item in the Sequence
-    std::string front() const;
-
-    // Get the last item in the Sequence
-    std::string back() const;
-
-    // Check if the Sequence is empty (has no items)
-    bool empty() const;
-
-    // Get the number of items in the Sequence
-    size_t size() const;
-
-
-    // OUTPUT
-
-
-    // Print the Sequence to the screen
-    friend std::ostream& operator<<(std::ostream& os, const Sequence& s);
+    // Output
+    friend std::ostream& operator<<(std::ostream& os, const Sequence& s); // Prints formatted list to output stream
 };
 
-#endif
+#endif // SEQUENCE_H

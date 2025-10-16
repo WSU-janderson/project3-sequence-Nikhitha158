@@ -3,242 +3,198 @@ Project Name and Description : Sequence Project
 construct a Sequence class that supports random access like an array, but also
 allows dynamic insertion and removal of new elements */
 
-#include "Sequence.h"
+#include "Sequence.h"  // Include class and node definitions
 
-//get node at a specific index (throws exception if index is invalid)
-SequenceNode* Sequence::getNode(size_t position) const {
-    if (position >= numElts)
-        throw std::out_of_range("Invalid index");
+// ============================================================================
+// Helper: getNode - returns pointer to node at a given position
+// ============================================================================
+std::shared_ptr<SequenceNode> Sequence::getNode(size_t position) const {
+    if (position >= numElts)                        // Validate index bounds
+        throw std::out_of_range("Invalid index");   // Throw if out of range
 
-    // Start from the head and move forward 'position' times
-    SequenceNode* current = head.get();
-    for (size_t i = 0; i < position; ++i) {
-        current = current->next.get();
-    }
-    return current;
+    auto current = head;                            // Start from head node
+    for (size_t i = 0; i < position; ++i)           // Traverse forward to target node
+        current = current->next;
+    return current;                                 // Return located node
 }
 
 // ============================================================================
 // Constructors / Destructor / Assignment
 // ============================================================================
-
-// Default + sized constructor
-// Creates an empty list, then fills it with 'sz' empty string nodes
-Sequence::Sequence(size_t sz) : head(nullptr), tail(nullptr), numElts(0) {
-    for (size_t i = 0; i < sz; ++i)
-        push_back(""); // Adds empty strings
+Sequence::Sequence(size_t sz) : head(nullptr), tail(), numElts(0) {
+    for (size_t i = 0; i < sz; ++i)                 // Create sz empty nodes if requested
+        push_back("");
 }
 
-// Copy constructor: makes a deep copy of another Sequence
-Sequence::Sequence(const Sequence& s) : head(nullptr), tail(nullptr), numElts(0) {
-    SequenceNode* node = s.head.get();
-    while (node) {
+Sequence::Sequence(const Sequence& s) : head(nullptr), tail(), numElts(0) {
+    auto node = s.head;                             // Start copying from source head
+    while (node) {                                  // Deep-copy each node
         push_back(node->item);
-        node = node->next.get();
+        node = node->next;
     }
 }
 
-// Destructor: automatically clears all nodes
 Sequence::~Sequence() {
-    clear();
+    clear();                                        // Release all nodes on destruction
 }
 
-// Assignment operator: clears current list and copies another Sequence
 Sequence& Sequence::operator=(const Sequence& s) {
-    if (this != &s) {  // Avoid self-assignment
-        clear();
-        SequenceNode* node = s.head.get();
+    if (this != &s) {                               // Avoid self-assignment
+        clear();                                    // Clear existing nodes
+        auto node = s.head;                         // Copy from source sequence
         while (node) {
             push_back(node->item);
-            node = node->next.get();
+            node = node->next;
         }
     }
-    return *this;
+    return *this;                                   // Enable assignment chaining
 }
 
 // ============================================================================
 // Element Access
 // ============================================================================
-
-// Returns a reference to the item at the given index
 std::string& Sequence::operator[](size_t position) {
-    return getNode(position)->item;
+    return getNode(position)->item;                 // Return reference to element at index
 }
 
 // ============================================================================
-// Modifiers (functions that change the list)
+// Modifiers
 // ============================================================================
-
-// Adds a new node to the end of the list
 void Sequence::push_back(std::string item) {
-    auto newNode = std::make_unique<SequenceNode>(item);
-    SequenceNode* newNodePtr = newNode.get();
+    auto newNode = std::make_shared<SequenceNode>(item); // Create new node for item
 
-    if (!head) {
-        // Case 1: list is empty
-        head = std::move(newNode);
-        tail = newNodePtr;
+    if (!head) {                                   // If list is empty
+        head = newNode;                            // New node becomes head
+        tail = newNode;                            // And also the tail
     } else {
-        // Case 2: list already has elements
-        newNode->prev = tail;
-        tail->next = std::move(newNode);
-        tail = newNodePtr;
+        auto tailPtr = tail.lock();                // Get strong ref to current tail
+        tailPtr->next = newNode;                   // Link new node after tail
+        newNode->prev = tailPtr;                   // Set back link to old tail
+        tail = newNode;                            // Update tail pointer
     }
-    ++numElts;
+    ++numElts;                                     // Increment element count
 }
 
-// Removes the last node in the list
 void Sequence::pop_back() {
-    if (empty())
+    if (empty())                                   // Prevent pop on empty list
         throw std::runtime_error("Cannot pop_back from empty sequence");
 
-    if (head.get() == tail) {
-        // Case 1: only one element
-        head.reset();
-        tail = nullptr;
+    auto tailPtr = tail.lock();                    // Get strong reference to tail
+
+    if (head == tailPtr) {                         // If only one element remains
+        head.reset();                              // Remove head
+        tail.reset();                              // Remove tail
     } else {
-        // Case 2: more than one element
-        SequenceNode* newTail = tail->prev;
-        newTail->next.reset();  // Deletes the last node
-        tail = newTail;
+        auto prevNode = tailPtr->prev.lock();      // Get previous node
+        if (prevNode) prevNode->next.reset();      // Detach last node
+        tail = prevNode;                           // Move tail backward
     }
-    --numElts;
+    --numElts;                                     // Decrease element count
 }
 
-// Inserts a new node at a specific position
 void Sequence::insert(size_t position, std::string item) {
-    if (position > numElts)
+    if (position > numElts)                        // Validate insert index
         throw std::out_of_range("Invalid index for insert");
 
-    if (position == numElts) {
-        // Insert at the end of the list
+    if (position == numElts) {                     // Append if at end
         push_back(item);
         return;
     }
 
-    auto newNode = std::make_unique<SequenceNode>(item);
-    SequenceNode* newNodePtr = newNode.get();
+    auto newNode = std::make_shared<SequenceNode>(item); // Create node to insert
 
-    if (position == 0) {
-        // Case 1: insert at beginning
-        newNode->next = std::move(head);
-        if (newNode->next) {
-            newNode->next->prev = newNodePtr;
-        }
-        head = std::move(newNode);
-        if (!tail) tail = newNodePtr;  // List was empty before
+    if (position == 0) {                           // Insert at beginning
+        newNode->next = head;
+        if (head) head->prev = newNode;
+        head = newNode;
+        if (numElts == 0) tail = newNode;          // Update tail if list was empty
     } else {
-        // Case 2: insert in middle
-        SequenceNode* current = getNode(position);
-        SequenceNode* prevNode = current->prev;
+        auto current = getNode(position);          // Get node currently at position
+        auto prevNode = current->prev.lock();      // Get previous node
 
-        newNode->prev = prevNode;
-        newNode->next = std::move(prevNode->next);
-        newNode->next->prev = newNodePtr;
-        prevNode->next = std::move(newNode);
+        newNode->next = current;                   // Link new node before current
+        newNode->prev = prevNode;                  // Link back to previous
+        if (prevNode) prevNode->next = newNode;    // Update previous node’s next
+        current->prev = newNode;                   // Update current node’s prev
     }
-    ++numElts;
+    ++numElts;                                     // Update count
 }
 
-// Removes all elements from the list
 void Sequence::clear() {
-    head.reset();
-    tail = nullptr;
-    numElts = 0;
+    head.reset();                                  // Release head chain
+    tail.reset();                                  // Release tail reference
+    numElts = 0;                                   // Reset count
 }
 
-// Erase a single element at a given position
 void Sequence::erase(size_t position) {
-    erase(position, 1);  // Delegate to the multi-element erase
+    erase(position, 1);                            // Delegate to range erase
 }
 
-// Erase 'count' elements starting at 'position'
 void Sequence::erase(size_t position, size_t count) {
-    if (position >= numElts)
+    if (position >= numElts)                       // Validate starting index
         throw std::out_of_range("Invalid erase position");
-    if (count == 0)
+    if (count == 0)                                // Nothing to remove
         return;
-    if (position + count > numElts)
+    if (position + count > numElts)                // Ensure range is valid
         throw std::out_of_range("Invalid erase range");
 
-    size_t deleted = 0;
-    while (deleted < count) {
-        SequenceNode* toDelete = getNode(position);
+    for (size_t i = 0; i < count; ++i) {           // Remove requested nodes
+        auto toDelete = getNode(position);         // Locate node to remove
+        auto prevNode = toDelete->prev.lock();     // Access previous node
+        auto nextNode = toDelete->next;            // Access next node
 
-        if (toDelete->prev) {
-            // Not the first node
-            if (toDelete->next) {
-                // Middle node — link prev and next
-                toDelete->next->prev = toDelete->prev;
-                toDelete->prev->next = std::move(toDelete->next);
-            } else {
-                // Last node — update tail
-                toDelete->prev->next.reset();
-                tail = toDelete->prev;
-            }
-        } else {
-            // First node
-            if (toDelete->next) {
-                // Update head to next node
-                toDelete->next->prev = nullptr;
-                head = std::move(toDelete->next);
-            } else {
-                // Only node in list
-                head.reset();
-                tail = nullptr;
-            }
-        }
+        if (prevNode)
+            prevNode->next = nextNode;             // Skip over deleted node
+        else
+            head = nextNode;                       // Update head if first removed
 
-        ++deleted;
-        --numElts;
+        if (nextNode)
+            nextNode->prev = prevNode;             // Reconnect backward link
+        else
+            tail = prevNode;                       // Update tail if last removed
+
+        --numElts;                                 // Decrement size counter
     }
 }
 
 // ============================================================================
-// Accessors (functions that only read data)
+// Accessors
 // ============================================================================
-
-// Returns the first item in the sequence
 std::string Sequence::front() const {
-    if (empty())
-        throw std::runtime_error("Sequence is empty");
-    return head->item;
+    if (empty()) throw std::runtime_error("Sequence is empty"); // Check nonempty
+    return head->item;                           // Return first element
 }
 
-// Returns the last item in the sequence
 std::string Sequence::back() const {
-    if (empty())
-        throw std::runtime_error("Sequence is empty");
-    return tail->item;
+    if (empty()) throw std::runtime_error("Sequence is empty"); // Check nonempty
+    auto tailPtr = tail.lock();                  // Obtain strong ref to tail
+    return tailPtr->item;                        // Return last element
 }
 
-// Checks if the list has zero elements
 bool Sequence::empty() const {
-    return numElts == 0;
+    return numElts == 0;                         // True if no elements
 }
 
-// Returns how many elements are in the list
 size_t Sequence::size() const {
-    return numElts;
+    return numElts;                              // Return number of elements
 }
 
-// ============================================================================
-// Output operator - prints the Sequence like <A, B, C>
-// ============================================================================
+// Output operator - prints formatted contents of sequence
 
 std::ostream& operator<<(std::ostream& os, const Sequence& s) {
-    os << "<";
-    SequenceNode* current = s.head.get();
-    bool first = true; // Used to avoid a leading comma
+    os << "<";                                   // Begin list formatting
+    auto current = s.head; // Start at first node
+    bool first = true;                           // Track comma placement
 
-    while (current) {
-        if (!current->item.empty()) {  // Skip empty strings
-            if (!first) os << ", ";
-            os << current->item;
-            first = false;
+    while (current) {                            // Traverse all nodes
+        if (!current->item.empty()) {            // Skip empty strings
+            if (!first) os << ", ";              // Add comma after first element
+            os << current->item;                 // Output current item
+            first = false;                       // Mark first printed
         }
-        current = current->next.get();
+        current = current->next;                 // Move to next node
     }
-    os << ">";
-    return os;
+
+    os << ">";                                   // Close list formatting
+    return os;                                   // Return output stream
 }
