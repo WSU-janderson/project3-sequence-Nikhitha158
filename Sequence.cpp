@@ -6,7 +6,7 @@ allows dynamic insertion and removal of new elements */
 #include "Sequence.h"  // Include class and node definitions
 
 // ============================================================================
-// Helper: getNode - returns pointer to node at a given position
+// getNode - returns pointer to node at a given position
 // ============================================================================
 std::shared_ptr<SequenceNode> Sequence::getNode(size_t position) const {
     if (position >= numElts)                        // Validate index bounds
