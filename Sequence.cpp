@@ -1,3 +1,8 @@
+/* Name : Nikhitha Palakurla
+Project Name and Description : Sequence Project
+construct a Sequence class that supports random access like an array, but also
+allows dynamic insertion and removal of new elements */
+
 #include "Sequence.h"
 
 //get node at a specific index (throws exception if index is invalid)
